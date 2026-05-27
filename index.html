@@ -555,7 +555,7 @@ function buildAnalysisText(score, md) {
   if (riesgoPais) {
     if (riesgoPais > 2000) parts.push(`El <span class="term" title="Spread EMBI+ sobre bonos de EE.UU.">riesgo país</span> muy elevado (${riesgoPais} bps) presiona a la baja, indicando fuerte tensión crediticia.`);
     else if (riesgoPais > 1500) parts.push(`El <span class="term" title="Spread EMBI+">riesgo país</span> alto (${riesgoPais} bps) indica marcada cautela sobre los títulos soberanos.`);
-    else if (riesgoPais < 1000) parts.push(`Un <span class="term" title="Spread EMBI+">riesgo país</span> debajo de los 1000 puntos (${riesgoPais} bps) estimula la renta fija.`);
+    else if (riesgoPais < 1000) parts.push(`Un <span class="term" title="Spread EMBI+">riesgo país</span> debajo de los 1000 puntos (${riesgoPais} bps) de confianza estimula la renta fija.`);
     else parts.push(`El <span class="term" title="Spread EMBI+">riesgo país</span> se mantiene estable en los ${riesgoPais} bps.`);
   }
 
@@ -653,15 +653,17 @@ function fmt(n) {
 
 function setCell(id, val, subId, sub, cls) {
   const el = document.getElementById(id);
+  if (!el) return;
   el.innerHTML = val;
   if (cls) el.className = `data-value ${cls}`;
-  if (subId && sub) document.getElementById(subId).textContent = sub;
+  const subEl = document.getElementById(subId);
+  if (subEl && sub) subEl.textContent = sub;
 }
 
 async function loadData() {
   document.getElementById('loading-indicator').style.display = 'block';
 
-  // Paralelismo de red sobre APIs 100% libres de CORS y llaves privadas
+  // Paralelismo seguro de red
   const [blue, oficial, mep, ccl, riesgo, badlar, reservas, inflacion] = await Promise.all([
     fetchJson('https://dolarapi.com/v1/dolares/blue'),
     fetchJson('https://dolarapi.com/v1/dolares/oficial'),
@@ -673,20 +675,20 @@ async function loadData() {
     fetchJson('https://api.argentinadatos.com/v1/finanzas/indices/inflacion')
   ]);
 
-  // 1. Extracción de Riesgo País Puro
+  // 1. Extracción de Riesgo País Seguro
   let riesgoPaisVal = 1200; 
   if (riesgo && Array.isArray(riesgo) && riesgo.length > 0) {
     const lastRiesgo = riesgo[riesgo.length - 1];
     riesgoPaisVal = lastRiesgo.valor || lastRiesgo.value || 1200;
   }
 
-  // 2. Extracción de Brecha Pura
+  // 2. Extracción de Brecha Cambiaria Segura (Evita crash si falta un objeto o propiedad)
   let brechaVal = 0;
-  if (mep && oficial) {
+  if (mep && mep.venta && oficial && oficial.venta) {
     brechaVal = ((mep.venta / oficial.venta) - 1) * 100;
   }
 
-  // 3. Extracción de Tasa Real (BADLAR Pura vs Inflación INDEC Mensual Pura)
+  // 3. Extracción de Tasa Real Segura
   let badlarVal = 40;
   if (badlar && Array.isArray(badlar) && badlar.length > 0) {
     const lastBadlar = badlar[badlar.length - 1];
@@ -697,29 +699,25 @@ async function loadData() {
     const lastInflacion = inflacion[inflacion.length - 1];
     inflacionMensualVal = lastInflacion.valor || lastInflacion.value || 3.5;
   }
-  // Tasa Efectiva Mensualizada vs Inflación Mensual INDEC pura
   const badlarMensual = (badlarVal / 12);
-  let tasaRealVal = (badlarMensual - inflacionMensualVal) * 12; // Anualizado para escala estándar
+  let tasaRealVal = (badlarMensual - inflacionMensualVal) * 12;
 
-  // 4. Extracción de Variación Diaria de Reservas del BCRA Pura
+  // 4. Extracción Segura de Reservas
   let comprasBCRAVal = 0;
   let reservasBrutasUltimas = 0;
   if (reservas && Array.isArray(reservas) && reservas.length > 1) {
     const rUltima = reservas[reservas.length - 1];
     const rAnterior = reservas[reservas.length - 2];
     reservasBrutasUltimas = rUltima.valor || 0;
-    comprasBCRAVal = (rUltima.valor || 0) - (rAnterior.valor || 0); // Delta real puro de la serie temporal del BCRA
+    comprasBCRAVal = (rUltima.valor || 0) - (rAnterior.valor || 0);
   }
 
-  // 5. Cálculos Prescriptos de Indicadores Implícitos (Lógica Financiera del Termómetro)
-  // Paridad implícita matemática deducida inversamente del EMBI puro
+  // 5. Cálculos de Indicadores Implícitos
   let paridadBonosVal = Math.max(10, Math.min(100, 95 - (riesgoPaisVal / 26)));
-  // Tasa de devaluación implícita deducida del arbitraje de brecha cambiaria viva
   let tasaFuturoVal = badlarVal + (brechaVal * 0.4);
-  // Presión porcentual real de la brecha sobre las bandas de contención
   let presionBandaVal = Math.min(100, Math.max(0, (brechaVal / 65) * 100));
 
-  // Actualización del Estado Global con datos purificados
+  // Sincronización del Estado Global
   marketData = {
     riesgoPais: riesgoPaisVal,
     brecha: brechaVal !== null ? brechaVal.toFixed(1) : null,
@@ -730,7 +728,7 @@ async function loadData() {
     presionBanda: presionBandaVal
   };
 
-  // ── MATRIZ DE CALCULO MATEMÁTICO DEL TERMÓMETRO ──
+  // Matriz Matemática del Termómetro
   let score = 50;
   if (riesgoPaisVal) {
     if (riesgoPaisVal > 1800) score -= 20;
@@ -759,19 +757,18 @@ async function loadData() {
     updateThermometer(score);
   }
 
-  // ── RENDERIZADO EFECTIVO EN LA GRILLA VISUAL ──
+  // Renderizado defensivo individual en la grilla visual
   const clsRiesgo = riesgoPaisVal > 1400 ? 'down' : riesgoPaisVal < 900 ? 'up' : 'flat';
   setCell('val-riesgo', fmt(riesgoPaisVal), 'sub-riesgo', `EMBI actual`, clsRiesgo);
 
   const clsBrecha = brechaVal > 45 ? 'down' : brechaVal < 20 ? 'up' : 'flat';
   setCell('val-brecha', `${brechaVal.toFixed(1)}%`, 'sub-brecha', `Spread MEP/Mayorista`, clsBrecha);
 
-  if (blue) setCell('val-blue', `$${fmt(blue.venta)}`, 'sub-blue', `Spread: $${fmt(blue.venta - blue.compra)}`, '');
-  if (mep) setCell('val-mep', `$${fmt(mep.venta)}`, 'sub-mep', `Bolsa libre`, '');
-  if (oficial) setCell('val-oficial', `$${fmt(oficial.venta)}`, 'sub-oficial', `Mayorista BCRA`, '');
-  if (ccl) setCell('val-ccl', `$${fmt(ccl.venta)}`, 'sub-ccl', `Salida implícita`, '');
+  if (blue && blue.venta !== undefined) setCell('val-blue', `$${fmt(blue.venta)}`, 'sub-blue', `Spread: $${fmt(blue.venta - blue.compra)}`, '');
+  if (mep && mep.venta !== undefined) setCell('val-mep', `$${fmt(mep.venta)}`, 'sub-mep', `Bolsa libre`, '');
+  if (oficial && oficial.venta !== undefined) setCell('val-oficial', `$${fmt(oficial.venta)}`, 'sub-oficial', `Mayorista BCRA`, '');
+  if (ccl && ccl.venta !== undefined) setCell('val-ccl', `$${fmt(ccl.venta)}`, 'sub-ccl', `Salida implícita`, '');
 
-  // Renderizado de las nuevas celdas con datos depurados de series de tiempo
   const clsTasa = tasaRealVal > 0 ? 'up' : 'down';
   setCell('val-tasa-real', `${tasaRealVal > 0 ? '+' : ''}${tasaRealVal.toFixed(1)}%`, 'sub-tasa-real', `IPC Ref: ${inflacionMensualVal}% mens.`, clsTasa);
 
@@ -786,15 +783,12 @@ async function loadData() {
   const clsBanda = presionBandaVal > 70 ? 'down' : 'up';
   setCell('val-banda', `${presionBandaVal.toFixed(0)}%`, 'sub-banda', `Estrés cambiario`, clsBanda);
 
-  // Estampa de tiempo real de ejecución local
   const now = new Date();
   document.getElementById('last-update').textContent = now.toLocaleDateString('es-AR') + ' ' + now.toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
   document.getElementById('loading-indicator').style.display = 'none';
 }
 
-// ══════════════════════════════════════════════
-// LOOP AUTOMÁTICO DE REFRESCO (Cada 60 segundos)
-// ══════════════════════════════════════════════
+// LOOP AUTOMÁTICO DE REFRESCO (60 segundos)
 loadData();
 setInterval(loadData, 60000);
 </script>
