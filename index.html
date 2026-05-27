@@ -368,7 +368,6 @@
 <body>
 <div class="container">
 
-  <!-- HEADER -->
   <div class="header">
     <div class="header-title">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -379,7 +378,6 @@
     <span class="last-update" id="last-update">Cargando...</span>
   </div>
 
-  <!-- THERMOMETER CARD -->
   <div class="card">
     <div class="card-header">
       <div class="card-header-left">
@@ -390,16 +388,15 @@
     </div>
 
     <div class="card-body">
-      <!-- Mood row -->
       <div class="mood-row">
         <p class="mood-hint">Deslizá el indicador para simular escenarios</p>
         <div class="mood-badge" id="mood-badge">
           <span id="mood-icon">—</span>
           <span id="mood-label">Cargando</span>
+          <span id="mood-percent" style="font-family: 'DM Mono', monospace; font-size: 9.5px; font-weight: 500; opacity: 0.7; margin-left: 4px;">—%</span>
         </div>
       </div>
 
-      <!-- Thermometer track -->
       <div class="thermometer-wrap">
         <div class="track">
           <div class="track-segment"></div>
@@ -429,7 +426,6 @@
         </div>
       </div>
 
-      <!-- Analysis box -->
       <div class="analysis-box">
         <div class="analysis-title">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9e9e9e" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -440,7 +436,6 @@
     </div>
   </div>
 
-  <!-- DATA GRID -->
   <div class="data-grid">
     <div class="data-cell">
       <span class="data-label">Riesgo País</span>
@@ -499,7 +494,6 @@
     </div>
   </div>
 
-  <!-- FOOTER CARD -->
   <div class="card">
     <div class="footer">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f39c12" stroke-width="2.5" flex-shrink="0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -607,6 +601,7 @@ function updateThermometer(score) {
   const badge = document.getElementById('mood-badge');
   const label = document.getElementById('mood-label');
   const icon = document.getElementById('mood-icon');
+  const percentEl = document.getElementById('mood-percent');
   const descTitle = document.getElementById('mood-desc-title');
   const analysis = document.getElementById('mood-analysis');
 
@@ -617,6 +612,7 @@ function updateThermometer(score) {
   badge.style.color = mood.color;
   label.textContent = mood.label;
   icon.textContent = mood.icon;
+  if (percentEl) percentEl.textContent = `${Math.round(score)}%`;
   descTitle.textContent = mood.desc;
 
   if (isDragging) {
