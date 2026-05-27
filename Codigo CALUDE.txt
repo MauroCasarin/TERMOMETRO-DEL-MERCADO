@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Termómetro del Mercado · AR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --border: #e8e6e1;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --text-muted: #9e9e9e;
+    --panic: #c0392b;
+    --tension: #e67e22;
+    --neutral: #f39c12;
+    --optimist: #27ae60;
+    --euphoria: #16a085;
+    --accent: #2980b9;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+    color: var(--text-primary);
+  }
+
+  .container {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-title svg { color: var(--accent); }
+  .header-title h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .last-update {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: #f0ede8;
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  /* ── MAIN CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .card-header {
+    height: 40px;
+    background: #fafaf8;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+  }
+  .card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-header-left span {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .card-body { padding: 20px; }
+
+  /* ── MOOD BADGE ── */
+  .mood-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .mood-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .mood-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fafaf8;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: color 0.5s ease;
+  }
+
+  /* ── THERMOMETER TRACK ── */
+  .thermometer-wrap {
+    position: relative;
+    padding-top: 14px;
+    padding-bottom: 36px;
+    margin-bottom: 4px;
+  }
+  .track {
+    height: 12px;
+    border-radius: 99px;
+    overflow: hidden;
+    display: flex;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+    background: linear-gradient(to right,
+      #c0392b 0%,
+      #e67e22 25%,
+      #f1c40f 50%,
+      #2ecc71 75%,
+      #16a085 100%
+    );
+  }
+  .track-segment {
+    flex: 1;
+    border-right: 1.5px solid rgba(255,255,255,0.5);
+  }
+  .track-segment:last-child { border-right: none; }
+
+  /* Thumb */
+  .thumb-wrapper {
+    position: absolute;
+    top: 8px;
+    width: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    transition: left 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 5;
+  }
+  .thumb {
+    width: 10px;
+    height: 28px;
+    border-radius: 99px;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    transition: background 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .thumb-inner {
+    width: 1.5px;
+    height: 10px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 99px;
+  }
+
+  /* Labels */
+  .track-labels {
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 0;
+    pointer-events: none;
+  }
+  .track-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    width: 20%;
+    text-align: center;
+  }
+  .track-label:first-child { text-align: left; color: var(--panic); }
+  .track-label:nth-child(2) { color: var(--tension); }
+  .track-label:nth-child(3) { color: var(--neutral); }
+  .track-label:nth-child(4) { color: var(--optimist); }
+  .track-label:last-child { text-align: right; color: var(--euphoria); }
+
+  /* Invisible range slider */
+  .slider-input {
+    position: absolute;
+    top: 10px;
+    left: 0;
+    width: 100%;
+    height: 32px;
+    opacity: 0;
+    cursor: ew-resize;
+    z-index: 10;
+    -webkit-appearance: none;
+  }
+
+  /* ── ANALYSIS BOX ── */
+  .analysis-box {
+    background: #fafaf8;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .analysis-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .analysis-title span {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .analysis-text {
+    font-size: 12px;
+    color: #3a3a3a;
+    font-weight: 500;
+    line-height: 1.65;
+  }
+  .term {
+    color: var(--accent);
+    text-decoration: underline dotted;
+    cursor: help;
+    font-weight: 600;
+  }
+
+  /* ── DATA GRID ── */
+  .data-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 600px) { .data-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 380px) { .data-grid { grid-template-columns: 1fr; } }
+
+  .data-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .data-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .data-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    transition: color 0.4s;
+  }
+  .data-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .up { color: #27ae60; }
+  .down { color: #c0392b; }
+  .flat { color: #f39c12; }
+
+  /* ── LOADING / ERROR ── */
+  .skeleton { 
+    background: linear-gradient(90deg, #f0ede8 25%, #e8e5e0 50%, #f0ede8 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+    height: 20px;
+    width: 70px;
+    display: inline-block;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    padding: 10px 20px;
+    background: #fafaf8;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .footer-text {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    line-height: 1.5;
+  }
+
+  /* Loader spinner */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid #e0ddd8;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .pulse-dot {
+    width: 6px; height: 6px;
+    background: #27ae60;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <h1>Termómetro del Mercado</h1>
+    </div>
+    <span class="last-update" id="last-update">Cargando...</span>
+  </div>
+
+  <!-- THERMOMETER CARD -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b6b6b" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Sentimiento del Mercado Argentino</span>
+      </div>
+      <div id="loading-indicator" class="spinner"></div>
+    </div>
+
+    <div class="card-body">
+      <!-- Mood row -->
+      <div class="mood-row">
+        <p class="mood-hint">Deslizá el indicador para simular escenarios</p>
+        <div class="mood-badge" id="mood-badge">
+          <span id="mood-icon">—</span>
+          <span id="mood-label">Cargando</span>
+        </div>
+      </div>
+
+      <!-- Thermometer track -->
+      <div class="thermometer-wrap">
+        <div class="track">
+          <div class="track-segment"></div>
+          <div class="track-segment"></div>
+          <div class="track-segment"></div>
+          <div class="track-segment"></div>
+          <div class="track-segment"></div>
+        </div>
+
+        <div class="thumb-wrapper" id="thumb-wrapper" style="left: 50%">
+          <div class="thumb" id="thumb">
+            <div class="thumb-inner"></div>
+          </div>
+        </div>
+
+        <input type="range" min="0" max="100" value="50" class="slider-input" id="slider"
+          oninput="onSliderChange(this.value)"
+          onmousedown="setDragging(true)" onmouseup="setDragging(false)"
+          ontouchstart="setDragging(true)" ontouchend="setDragging(false)">
+
+        <div class="track-labels">
+          <span class="track-label">Pánico</span>
+          <span class="track-label">Tensión</span>
+          <span class="track-label">Neutral</span>
+          <span class="track-label">Optimista</span>
+          <span class="track-label">Euforia</span>
+        </div>
+      </div>
+
+      <!-- Analysis box -->
+      <div class="analysis-box">
+        <div class="analysis-title">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9e9e9e" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="mood-desc-title">CARGANDO ANÁLISIS...</span>
+        </div>
+        <p class="analysis-text" id="mood-analysis">Obteniendo datos de mercado en tiempo real...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA GRID -->
+  <div class="data-grid">
+    <div class="data-cell">
+      <span class="data-label">Riesgo País</span>
+      <span class="data-value" id="val-riesgo"><span class="skeleton"></span></span>
+      <span class="data-sub" id="sub-riesgo">Índice EMBI+</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-label">Brecha Cambiaria</span>
+      <span class="data-value" id="val-brecha"><span class="skeleton"></span></span>
+      <span class="data-sub" id="sub-brecha">MEP vs Oficial</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-label">Dólar Blue</span>
+      <span class="data-value" id="val-blue"><span class="skeleton"></span></span>
+      <span class="data-sub" id="sub-blue">Compra / Venta</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-label">Dólar MEP</span>
+      <span class="data-value" id="val-mep"><span class="skeleton"></span></span>
+      <span class="data-sub" id="sub-mep">Mercado Electrónico</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-label">Dólar Oficial</span>
+      <span class="data-value" id="val-oficial"><span class="skeleton"></span></span>
+      <span class="data-sub" id="sub-oficial">Mayorista</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-label">CCL</span>
+      <span class="data-value" id="val-ccl"><span class="skeleton"></span></span>
+      <span class="data-sub" id="sub-ccl">Contado Con Liqui</span>
+    </div>
+  </div>
+
+  <!-- FOOTER CARD -->
+  <div class="card">
+    <div class="footer">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f39c12" stroke-width="2.5" flex-shrink="0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <p class="footer-text">Score calculado en base a riesgo país, brecha cambiaria y tendencia del Merval. Datos en tiempo real vía APIs públicas. No constituye asesoramiento financiero.</p>
+      <div class="pulse-dot" style="margin-left: auto; flex-shrink:0;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let calculatedScore = 50;
+let isDragging = false;
+let marketData = {};
+
+// ══════════════════════════════════════════════
+// MOOD ENGINE
+// ══════════════════════════════════════════════
+function getMoodDetails(score) {
+  if (score >= 80) return {
+    label: 'EUFORIA', icon: '↗',
+    color: '#16a085', gradient: 'linear-gradient(160deg,#1abc9c,#16a085)',
+    desc: 'ALTA CONFIANZA, RISK-ON GENERALIZADO',
+    hoverInfo: 'Simulación de Euforia: Inversores asumen alto riesgo esperando grandes rendimientos. Suele verse en picos alcistas. Atención a posibles tomas de ganancias.'
+  };
+  if (score >= 60) return {
+    label: 'OPTIMISTA', icon: '↑',
+    color: '#27ae60', gradient: 'linear-gradient(160deg,#2ecc71,#27ae60)',
+    desc: 'CLIMA FAVORABLE, APETITO POR RIESGO',
+    hoverInfo: 'Simulación Optimista: Flujos de capital favorecen la renta variable, bonos subiendo de paridad con apetito por el riesgo (risk-on).'
+  };
+  if (score <= 20) return {
+    label: 'PÁNICO', icon: '↙',
+    color: '#c0392b', gradient: 'linear-gradient(160deg,#e74c3c,#c0392b)',
+    desc: 'AVERSIÓN EXTREMA AL RIESGO, FLIGHT TO QUALITY',
+    hoverInfo: 'Simulación de Pánico: Mercado descontando riesgo sistémico. Fuerte salto de la brecha y venta masiva de riesgo buscando liquidez dura (flight to quality).'
+  };
+  if (score <= 40) return {
+    label: 'TENSIÓN', icon: '↘',
+    color: '#e67e22', gradient: 'linear-gradient(160deg,#f39c12,#e67e22)',
+    desc: 'ALTA INCERTIDUMBRE, MERCADO DEFENSIVO',
+    hoverInfo: 'Simulación de Tensión: Búsqueda activa de coberturas (hedge), desarmes de equity y traslado generalizado hacia instrumentos defensivos o indexados.'
+  };
+  return {
+    label: 'NEUTRAL', icon: '→',
+    color: '#d4a017', gradient: 'linear-gradient(160deg,#f1c40f,#d4a017)',
+    desc: 'MERCADO EXPECTANTE, SIN TENDENCIA CLARA',
+    hoverInfo: 'Simulación Neutral: Contexto de moderación (Wait & See). Flujos de rotación equilibrados, posicionamiento táctico en tasa de corto plazo.'
+  };
+}
+
+function buildAnalysisText(score, md) {
+  const { riesgoPais, brecha, dolarMep, dolarOficial, dolarBlue } = md;
+  let parts = [];
+
+  if (riesgoPais) {
+    if (riesgoPais > 2000) parts.push(`El <span class="term" title="Spread sobre Treasuries de EE.UU.">riesgo país</span> muy elevado (${riesgoPais} bps) presiona a la baja, indicando tensión sobre la <span class="term" title="Obligaciones del Estado Nacional">deuda soberana</span>.`);
+    else if (riesgoPais > 1500) parts.push(`El <span class="term" title="Spread sobre Treasuries de EE.UU.">riesgo país</span> elevado (${riesgoPais} bps) indica preocupación por la <span class="term" title="Obligaciones del Estado Nacional">deuda soberana</span>.`);
+    else if (riesgoPais < 800) parts.push(`El <span class="term" title="Spread sobre Treasuries de EE.UU.">riesgo país</span> reducido (${riesgoPais} bps) muestra fuerte confianza en la <span class="term" title="Obligaciones del Estado Nacional">deuda soberana</span>.`);
+    else parts.push(`El <span class="term" title="Spread sobre Treasuries de EE.UU.">riesgo país</span> moderado (${riesgoPais} bps) ayuda a la recuperación de la <span class="term" title="Obligaciones del Estado Nacional">deuda soberana</span>.`);
+  }
+
+  if (brecha !== null && brecha !== undefined) {
+    const b = parseFloat(brecha);
+    if (b > 100) parts.push(`Extrema volatilidad cambiaria con una <span class="term" title="Diferencia % entre dólar paralelo y oficial">brecha</span> del ${b.toFixed(1)}%.`);
+    else if (b > 50) parts.push(`Incertidumbre cambiaria por una <span class="term" title="Diferencia % entre dólar paralelo y oficial">brecha</span> ampliada del ${b.toFixed(1)}%.`);
+    else parts.push(`Estabilidad cambiaria con una <span class="term" title="Diferencia % entre dólar paralelo y oficial">brecha</span> del ${b.toFixed(1)}%, indicando posible <span class="term" title="Entrada de divisas al mercado regulado">captura de flujo</span> y respaldo en el <span class="term" title="Ingresos > Gastos del Sector Público">superávit fiscal</span>.`);
+  }
+
+  if (!parts.length) {
+    parts.push('Mercado sin claros direccionales macroeconómicos. Contexto de expectativa generalizada.');
+  }
+
+  return parts.join(' ');
+}
+
+// ══════════════════════════════════════════════
+// UI UPDATE
+// ══════════════════════════════════════════════
+function updateThermometer(score) {
+  const mood = getMoodDetails(score);
+  const thumb = document.getElementById('thumb-wrapper');
+  const thumbEl = document.getElementById('thumb');
+  const badge = document.getElementById('mood-badge');
+  const label = document.getElementById('mood-label');
+  const icon = document.getElementById('mood-icon');
+  const descTitle = document.getElementById('mood-desc-title');
+  const analysis = document.getElementById('mood-analysis');
+
+  // Clamp
+  score = Math.max(0, Math.min(100, score));
+
+  thumb.style.left = `${score}%`;
+  thumbEl.style.background = mood.gradient;
+  badge.style.color = mood.color;
+  label.textContent = mood.label;
+  icon.textContent = mood.icon;
+  descTitle.textContent = mood.desc;
+
+  if (isDragging) {
+    analysis.innerHTML = mood.hoverInfo;
+  } else {
+    analysis.innerHTML = buildAnalysisText(score, marketData);
+  }
+}
+
+function setDragging(val) {
+  isDragging = val;
+  if (!val) updateThermometer(calculatedScore);
+}
+
+function onSliderChange(val) {
+  const score = Number(val);
+  updateThermometer(score);
+}
+
+// ══════════════════════════════════════════════
+// DATA FETCH
+// ══════════════════════════════════════════════
+async function fetchJson(url) {
+  try {
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch { return null; }
+}
+
+function fmt(n) {
+  if (n === undefined || n === null) return '—';
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n);
+}
+
+function setCell(id, val, subId, sub, cls) {
+  const el = document.getElementById(id);
+  el.innerHTML = val;
+  if (cls) el.className = `data-value ${cls}`;
+  if (subId && sub) document.getElementById(subId).textContent = sub;
+}
+
+async function loadData() {
+  // Show loading
+  document.getElementById('loading-indicator').style.display = 'block';
+
+  // Fetch in parallel
+  const [blue, oficial, mep, ccl, cripto, riesgo] = await Promise.all([
+    fetchJson('https://dolarapi.com/v1/dolares/blue'),
+    fetchJson('https://dolarapi.com/v1/dolares/oficial'),
+    fetchJson('https://dolarapi.com/v1/dolares/bolsa'),
+    fetchJson('https://dolarapi.com/v1/dolares/contadoconliqui'),
+    fetchJson('https://dolarapi.com/v1/dolares/cripto'),
+    fetchJson('https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais')
+  ]);
+
+  // Fallback riesgo
+  let riesgoPaisVal = null;
+  if (riesgo && Array.isArray(riesgo) && riesgo.length > 0) {
+    const last = riesgo[riesgo.length - 1];
+    riesgoPaisVal = last.valor || last.value || null;
+  } else if (riesgo && riesgo.valor) {
+    riesgoPaisVal = riesgo.valor;
+  }
+
+  // Calculate brecha
+  let brechaVal = null;
+  if (mep && oficial) {
+    brechaVal = ((mep.venta / oficial.venta) - 1) * 100;
+  }
+
+  // Store globally
+  marketData = {
+    riesgoPais: riesgoPaisVal,
+    brecha: brechaVal !== null ? brechaVal.toFixed(1) : null,
+    dolarBlue: blue,
+    dolarMep: mep,
+    dolarOficial: oficial,
+    dolarCcl: ccl,
+    dolarCripto: cripto
+  };
+
+  // ── SCORE CALCULATION (mirrors MarketThermometer.tsx) ──
+  let score = 50;
+  if (riesgoPaisVal) {
+    if (riesgoPaisVal > 2000) score -= 30;
+    else if (riesgoPaisVal > 1500) score -= 15;
+    else if (riesgoPaisVal < 800) score += 25;
+    else if (riesgoPaisVal < 1000) score += 15;
+  }
+  if (brechaVal !== null) {
+    if (brechaVal > 100) score -= 20;
+    else if (brechaVal > 50) score -= 10;
+    else if (brechaVal < 20) score += 15;
+  }
+  score = Math.max(0, Math.min(100, score));
+  calculatedScore = score;
+
+  // Update slider to calculated score
+  if (!isDragging) {
+    document.getElementById('slider').value = score;
+    updateThermometer(score);
+  }
+
+  // ── DATA CELLS ──
+  if (riesgoPaisVal) {
+    const cls = riesgoPaisVal > 1500 ? 'down' : riesgoPaisVal < 800 ? 'up' : 'flat';
+    setCell('val-riesgo', fmt(riesgoPaisVal), 'sub-riesgo', 'Índice EMBI+', cls);
+  } else {
+    setCell('val-riesgo', '—', null, null, '');
+  }
+
+  if (brechaVal !== null) {
+    const cls = brechaVal > 50 ? 'down' : brechaVal < 20 ? 'up' : 'flat';
+    setCell('val-brecha', `${brechaVal.toFixed(1)}%`, 'sub-brecha', `MEP $${fmt(mep?.venta)} / Ofic $${fmt(oficial?.venta)}`, cls);
+  }
+
+  if (blue) {
+    setCell('val-blue', `$${fmt(blue.venta)}`, 'sub-blue', `C $${fmt(blue.compra)} / V $${fmt(blue.venta)}`, '');
+  }
+  if (mep) {
+    setCell('val-mep', `$${fmt(mep.venta)}`, 'sub-mep', `Compra $${fmt(mep.compra)}`, '');
+  }
+  if (oficial) {
+    setCell('val-oficial', `$${fmt(oficial.venta)}`, 'sub-oficial', `Mayorista`, '');
+  }
+  if (ccl) {
+    setCell('val-ccl', `$${fmt(ccl.venta)}`, 'sub-ccl', `Contado Con Liqui`, '');
+  }
+
+  // Timestamp
+  const now = new Date();
+  const ts = now.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' })
+    + ' ' + now.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('last-update').textContent = ts;
+  document.getElementById('loading-indicator').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+// INIT + AUTO-REFRESH (each 60 seconds)
+// ══════════════════════════════════════════════
+loadData();
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>
